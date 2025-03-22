@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Homework Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="logo.png">
+    <style>
+        @keyframes flash {
+            0% { background-color: red; color: white; }
+            50% { background-color: yellow; color: black; }
+            100% { background-color: red; color: white; }
+        }
+        .overdue {
+            animation: flash 1s infinite;
+            font-weight: bold;
+        }
+        .completed {
+            background-color: lightgreen !important;
+        }
+    </style>
+</head>
+<body>
+    <h1>My Homework Tracker</h1>
+    
+    <!-- Login Screen -->
+    <div id="loginScreen">
+        <h2>Login</h2>
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+        <p id="loginError" style="color: red;"></p>
+    </div>
+
+    <!-- Homework Tracker -->
+    <div id="trackerScreen" style="display: none;">
+        <button onclick="logout()">Logout</button>
+        <button onclick="addAssignment()">Add Assignment</button>
+        <table>
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th>Assignment</th>
+                    <th>Due Date</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="homeworkTable"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const users = { "Tyson": "11", "22": "33", "11": "22" }; // Edit to add/remove users
+        let currentUser = null;
+
+        function login() {
+            let user = document.getElementById("username").value;
+            let pass = document.getElementById("password").value;
+            if (users[user] && users[user] === pass) {
+                currentUser = user;
+                document.getElementById("loginScreen").style.display = "none";
+                document.getElementById("trackerScreen").style.display = "block";
+                loadAssignments();
+            } else {
+                document.getElementById("loginError").innerText = "Invalid login credentials.";
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById("loginScreen").style.display = "block";
+            document.getElementById("trackerScreen").style.display = "none";
+        }
+
+        function formatDateToDMY(dateString) {
+            if (!dateString) return "";
+            let [year, month, day] = dateString.split("-");
+            return `${day}/${month}/${year}`;
+        }
+
+        function formatDateToYMD(dateString) {
+            if (!dateString) return "";
+            let [day, month, year] = dateString.split("/");
+            return `${year}-${month}-${day}`;
+        }
+
+        function addAssignment() {
+            if (!currentUser) return;
+            let table = document.getElementById("homeworkTable");
+            let row = table.insertRow();
+            row.innerHTML = `
+                <td contenteditable="true"></td>
+                <td contenteditable="true"></td>
+                <td><input type="date" onchange="checkDueDates(); saveAssignments()"></td>
+                <td>
+                    <select onchange="updateStatus(this)">
+                        <option value="Pending">Pending</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                </td>
+                <td><button onclick="removeAssignment(this)">Remove</button></td>
+            `;
+            saveAssignments();
+        }
+
+        function removeAssignment(button) {
+            button.parentElement.parentElement.remove();
+            saveAssignments();
+        }
+
+        function updateStatus(select) {
+            let row = select.parentElement.parentElement;
+            let subjectCell = row.cells[0];
+
+            if (select.value === "Completed") {
+                row.classList.remove("overdue"); // Remove overdue styling
+                row.classList.add("completed"); // Apply completed styling
+                subjectCell.innerHTML = subjectCell.innerText.replace("❗ ", ""); // Remove ❗
+            } else {
+                row.classList.remove("completed"); // Remove completed styling
+                checkDueDates(); // Recheck if it's overdue
+            }
+
+            saveAssignments();
+        }
+
+        function saveAssignments() {
+            if (!currentUser) return;
+            let table = document.getElementById("homeworkTable");
+            let assignments = [];
+            for (let row of table.rows) {
+                assignments.push({
+                    subject: row.cells[0].innerText.replace("❗ ", ""),
+                    assignment: row.cells[1].innerText,
+                    dueDate: formatDateToDMY(row.cells[2].children[0].value),
+                    status: row.cells[3].children[0].value
+                });
+            }
+            localStorage.setItem(`homework_${currentUser}`, JSON.stringify(assignments));
+        }
+
+        function loadAssignments() {
+            if (!currentUser) return;
+            let table = document.getElementById("homeworkTable");
+            table.innerHTML = "";
+            let assignments = JSON.parse(localStorage.getItem(`homework_${currentUser}`)) || [];
+            assignments.forEach(assignment => {
+                let row = table.insertRow();
+                row.innerHTML = `
+                    <td contenteditable="true">${assignment.subject}</td>
+                    <td contenteditable="true">${assignment.assignment}</td>
+                    <td><input type="date" value="${formatDateToYMD(assignment.dueDate)}" onchange="checkDueDates(); saveAssignments()"></td>
+                    <td>
+                        <select onchange="updateStatus(this)">
+                            <option value="Pending" ${assignment.status === "Pending" ? "selected" : ""}>Not Done</option>
+                            <option value="Completed" ${assignment.status === "Completed" ? "selected" : ""}>Completed</option>
+                        </select>
+                    </td>
+                    <td><button onclick="removeAssignment(this)">Remove</button></td>
+                `;
+                if (assignment.status === "Completed") row.classList.add("completed");
+            });
+            checkDueDates();
+        }
+
+        function checkDueDates() {
+            let today = new Date().toISOString().split('T')[0];
+            for (let row of document.getElementById("homeworkTable").rows) {
+                let dueDateInput = row.cells[2].children[0];
+                let dueDate = dueDateInput.value;
+                let status = row.cells[3].children[0].value;
+                let subjectCell = row.cells[0];
+
+                if (dueDate && dueDate < today && status !== "Completed") {
+                    row.classList.add("overdue");
+                    if (!subjectCell.innerText.includes("❗")) {
+                        subjectCell.innerHTML = `❗ ${subjectCell.innerText}`;
+                    }
+                } else {
+                    row.classList.remove("overdue");
+                    subjectCell.innerHTML = subjectCell.innerText.replace("❗ ", "");
+                }
+            }
+        }
+    </script>
+</body>
+</html>
