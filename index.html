@@ -246,7 +246,15 @@
                     dueDate: row.cells[2].children[0].value,
                     status: row.cells[3].children[0].value
                 });
+
+            try {
+                await setDoc(doc(db, "users", currentUser), { assignments });
+                console.log("✅ Assignments saved to Firestore:", assignments);
+            } catch (error) {
+                console.error("❌ Firestore write error:", error);
             }
+
+        }
 
             // Save to Local Storage
             localStorage.setItem(`homework_${currentUser}`, JSON.stringify(assignments));
