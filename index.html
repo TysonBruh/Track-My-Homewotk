@@ -188,24 +188,27 @@
 
 
      <script type="module">
-        // Import Firebase modules
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-firestore.js";
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
 
-        // Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyBms2w9GuAzdfhNe2b7q1ownV8BN05_Lps",
-            authDomain: "track-my-homework.firebaseapp.com",
-            projectId: "track-my-homework",
-            storageBucket: "track-my-homework.appspot.com",
-            messagingSenderId: "60717015225",
-            appId: "1:60717015225:web:ed7fc9f1ea91ba29e77b68",
-            measurementId: "G-S9C4RDSJHM"
-        };
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyBms2w9GuAzdfhNe2b7q1ownV8BN05_Lps",
+    authDomain: "track-my-homework.firebaseapp.com",
+    projectId: "track-my-homework",
+    storageBucket: "track-my-homework.firebasestorage.app",
+    messagingSenderId: "60717015225",
+    appId: "1:60717015225:web:ed7fc9f1ea91ba29e77b68",
+    measurementId: "G-S9C4RDSJHM"
+  };
 
-        // Initialize Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
         console.log("🔥 Firestore initialized:", db);
 
         // Simple user database (stored in frontend)
