@@ -23,7 +23,9 @@
 </head>
 <body>
     <h1>My Homework Tracker</h1>
-    
+    <h3>Note: This only save localy, means only save to your browser/computer ip!</h3>
+    <h3>If you change browser or computer the user won't save!</h3>
+
     <!-- Login Screen -->
     <div id="loginScreen">
         <h2>Login</h2>
@@ -138,6 +140,7 @@
                     status: row.cells[3].children[0].value
                 });
             }
+            localStorage.setItem(`homework_${currentUser}`, JSON.stringify(assignments));
         }
 
         function loadAssignments() {
@@ -184,154 +187,3 @@
             }
         }
     </script>
-
-
-     <script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyBms2w9GuAzdfhNe2b7q1ownV8BN05_Lps",
-    authDomain: "track-my-homework.firebaseapp.com",
-    projectId: "track-my-homework",
-    storageBucket: "track-my-homework.firebasestorage.app",
-    messagingSenderId: "60717015225",
-    appId: "1:60717015225:web:ed7fc9f1ea91ba29e77b68",
-    measurementId: "G-S9C4RDSJHM"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-        console.log("🔥 Firestore initialized:", db);
-
-        // Simple user database (stored in frontend)
-        const users = { 
-            "Tyson": "11", 
-            "22": "33", 
-            "11": "22" 
-        };
-
-        let currentUser = null;
-
-        // Login function
-        function login() {
-            let user = document.getElementById("username").value;
-            let pass = document.getElementById("password").value;
-
-            if (users[user] && users[user] === pass) {
-                currentUser = user;
-                localStorage.setItem("lastUser", user);
-                document.getElementById("loginScreen").style.display = "none";
-                document.getElementById("trackerScreen").style.display = "block";
-                loadAssignments();
-            } else {
-                document.getElementById("loginError").innerText = "Invalid login credentials.";
-            }
-        }
-
-        // Save assignments to Firestore
-        async function saveAssignments() {
-            if (!currentUser) return;
-            let table = document.getElementById("homeworkTable");
-            let assignments = [];
-
-            for (let row of table.rows) {
-                assignments.push({
-                    subject: row.cells[0].innerText.replace("❗ ", ""),
-                    assignment: row.cells[1].innerText,
-                    dueDate: row.cells[2].children[0].value,
-                    status: row.cells[3].children[0].value
-                });
-
-            try {
-                await setDoc(doc(db, "users", currentUser), { assignments });
-                console.log("✅ Assignments saved to Firestore:", assignments);
-            } catch (error) {
-                console.error("❌ Firestore write error:", error);
-            }
-
-        }
-
-            // Save to Firestore with error handling
-            try {
-                await setDoc(doc(db, "users", currentUser), { assignments });
-                console.log("✅ Assignments saved to Firestore:", assignments);
-            } catch (error) {
-                console.error("❌ Firestore write error:", error);
-            }
-        }
-
-        // Load assignments from Firestore
-        async function loadAssignments() {
-            if (!currentUser) return;
-            let table = document.getElementById("homeworkTable");
-            table.innerHTML = "";
-
-            try {
-                const docRef = doc(db, "users", currentUser);
-
-                // Listen for Firestore updates
-                onSnapshot(docRef, (docSnap) => {
-                    if (docSnap.exists()) {
-                        let cloudAssignments = docSnap.data().assignments || [];
-                        console.log("📥 Firestore data loaded:", cloudAssignments);
-
-                        // Only update local storage if data has changed
-                        if (JSON.stringify(cloudAssignments) !== JSON.stringify(localAssignments)) {
-                            localStorage.setItem(`homework_${currentUser}`, JSON.stringify(cloudAssignments));
-                            displayAssignments(cloudAssignments);
-                        }
-                    } else {
-                        console.log("🛑 No Firestore data found.");
-                    }
-                });
-            } catch (error) {
-                console.error("❌ Firestore read error:", error);
-            }
-        }
-
-        // Display assignments in table
-        function displayAssignments(assignments) {
-            let table = document.getElementById("homeworkTable");
-            table.innerHTML = ""; 
-
-            assignments.forEach(assignment => {
-                let row = table.insertRow();
-                row.insertCell(0).innerText = assignment.subject;
-                row.insertCell(1).innerText = assignment.assignment;
-
-                let dueDateCell = row.insertCell(2);
-                let dueDateInput = document.createElement("input");
-                dueDateInput.type = "date";
-                dueDateInput.value = assignment.dueDate;
-                dueDateCell.appendChild(dueDateInput);
-
-                let statusCell = row.insertCell(3);
-                let statusSelect = document.createElement("select");
-                ["Pending", "Completed", "Overdue"].forEach(status => {
-                    let option = document.createElement("option");
-                    option.value = status;
-                    option.textContent = status;
-                    if (status === assignment.status) option.selected = true;
-                    statusSelect.appendChild(option);
-                });
-                statusCell.appendChild(statusSelect);
-            });
-        }
-
-        // Auto-login last user
-        window.onload = function () {
-            let lastUser = localStorage.getItem("lastUser");
-            if (lastUser) {
-                document.getElementById("username").value = lastUser;
-            }
-        };
-    </script>
-</body>
-</html>
