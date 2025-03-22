@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Homework Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="logo.png">
+    <style>
+        @keyframes flash {
+            0% { background-color: red; color: white; }
+            50% { background-color: yellow; color: black; }
+            100% { background-color: red; color: white; }
+        }
+        .overdue {
+            animation: flash 1s infinite;
+            font-weight: bold;
+        }
+        .completed {
+            background-color: lightgreen !important;
+            animation: none !important; /* Stops flashing for completed tasks */
+        }
+    </style>
+</head>
+<body>
+    <h1>My Homework Tracker</h1>
+    
+    <!-- Login Screen -->
+    <div id="loginScreen">
+        <h2>Login</h2>
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password">
+        <button onclick="login()">Login</button>
+        <p id="loginError" style="color: red;"></p>
+    </div>
+
+    <!-- Homework Tracker -->
+    <div id="trackerScreen" style="display: none;">
+        <button onclick="logout()">Logout</button>
+        <button onclick="addAssignment()">Add Assignment</button>
+        <table>
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th>Assignment</th>
+                    <th>Due Date</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="homeworkTable"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const users = { "Tyson": "11", "22": "33", "11": "22" }; // Edit to add/remove users
+        let currentUser = null;
+
+        function login() {
+            let user = document.getElementById("username").value;
+            let pass = document.getElementById("password").value;
+            if (users[user] && users[user] === pass) {
+                currentUser = user;
+                document.getElementById("loginScreen").style.display = "none";
+                document.getElementById("trackerScreen").style.display = "block";
+                loadAssignments();
+            } else {
+                document.getElementById("loginError").innerText = "Invalid login credentials.";
+            }
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById("loginScreen").style.display = "block";
+            document.getElementById("trackerScreen").style.display = "none";
+        }
+
+        function addAssignment() {
+            if (!currentUser) return;
+            let table = document.getElementById("homeworkTable");
+            let row = table.insertRow();
+            row.innerHTML = `
+                <td contenteditable="true">New Subject</td>
+                <td contenteditable="true">New Assignment</td>
+                <td><input type="date" onchange="checkDueDates(); saveAssignments()"></td>
+                <td>
+                    <select onchange="updateStatus(this)">
+                        <option value="Pending" selected>Not Done</option>
+                        <option value="Completed">Completed</option>
+                    </select>
+                </td>
+                <td><button onclick="removeAssignment(this)">Remove</button></td>
+            `;
+            saveAssignments();
+        }
+
+        function removeAssignment(button) {
+            let row = button.parentElement.parentElement;
+            row.remove();
+            saveAssignments();
+        }
+
+        function checkDueDates() {
+            let today = new Date().toISOString().split("T")[0];
+            document.querySelectorAll("#homeworkTable tr").forEach(row => {
+                let dueDateInput = row.cells[2].querySelector("input");
+                let subjectCell = row.cells[0];
+
+                if (dueDateInput) {
+                    let dueDate = dueDateInput.value;
+                    let status = row.cells[3].querySelector("select").value;
+
+                    if (dueDate && dueDate < today && status !== "Completed") {
+                        row.classList.add("overdue");
+                        subjectCell.innerText = "❗ " + subjectCell.innerText.replace("❗ ", "");
+                    } else {
+                        row.classList.remove("overdue");
+                        subjectCell.innerText = subjectCell.innerText.replace("❗ ", "");
+                    }
+                }
+            });
+        }
+
+        function updateStatus(select) {
+            let row = select.parentElement.parentElement;
+            let subjectCell = row.cells[0];
+
+            if (select.value === "Completed") {
+                row.classList.add("completed");
+                row.classList.remove("overdue"); // Remove overdue flashing
+                subjectCell.innerText = subjectCell.innerText.replace("❗ ", "");
+            } else {
+                row.classList.remove("completed");
+                checkDueDates(); // Reapply flashing if overdue
+            }
+            saveAssignments();
+        }
+    </script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.5.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyBms2w9GuAzdfhNe2b7q1ownV8BN05_Lps",
+            authDomain: "track-my-homework.firebaseapp.com",
+            projectId: "track-my-homework",
+            storageBucket: "track-my-homework.appspot.com",
+            messagingSenderId: "60717015225",
+            appId: "1:60717015225:web:ed7fc9f1ea91ba29e77b68",
+            measurementId: "G-S9C4RDSJHM"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        let currentUser = localStorage.getItem("lastUser") || null; // 🔥 Keeps last user after logout
+
+        // ✅ Save assignments to both Local Storage & Firestore
+        async function saveAssignments() {
+            if (!currentUser) return;
+            let table = document.getElementById("homeworkTable");
+            let assignments = [];
+            
+            for (let row of table.rows) {
+                assignments.push({
+                    subject: row.cells[0].innerText.replace("❗ ", ""),
+                    assignment: row.cells[1].innerText,
+                    dueDate: row.cells[2].children[0].value,
+                    status: row.cells[3].children[0].value
+                });
+            }
+
+            // Save to Local Storage
+            localStorage.setItem(`homework_${currentUser}`, JSON.stringify(assignments));
+
+            // Save to Firestore
+            try {
+                await setDoc(doc(db, "users", currentUser), { assignments });
+                console.log("✅ Assignments saved to Firestore & Local Storage.");
+            } catch (error) {
+                console.error("❌ Error saving to Firestore:", error);
+            }
+        }
+
+        // ✅ Load assignments from Local Storage first, then Firestore
+        async function loadAssignments() {
+            if (!currentUser) return;
+            let table = document.getElementById("homeworkTable");
+            table.innerHTML = "";
+
+            // 1️⃣ Load from Local Storage first
+            let localAssignments = JSON.parse(localStorage.getItem(`homework_${currentUser}`)) || [];
+            if (localAssignments.length > 0) {
+                console.log("📥 Loaded from Local Storage:", localAssignments);
+                displayAssignments(localAssignments);
+            }
+
+            try {
+                const docRef = doc(db, "users", currentUser);
+
+                // 2️⃣ Load & Sync with Firestore
+                onSnapshot(docRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        let cloudAssignments = docSnap.data().assignments || [];
+                        console.log("📥 Firestore data loaded:", cloudAssignments);
+
+                        // Update Local Storage with latest cloud data
+                        localStorage.setItem(`homework_${currentUser}`, JSON.stringify(cloudAssignments));
+
+                        displayAssignments(cloudAssignments);
+                    } else {
+                        console.log("🛑 No Firestore data found.");
+                    }
+                });
+            } catch (error) {
+                console.error("❌ Error loading from Firestore:", error);
+            }
+        }
+
+        // ✅ Function to display assignments in table
+        function displayAssignments(assignments) {
+            let table = document.getElementById("homeworkTable");
+            table.innerHTML = ""; // Clear old data
+
+            assignments.forEach((assignment) => {
+                let row = table.insertRow();
+                row.innerHTML = `
+                    <td contenteditable="true">${assignment.subject}</td>
+                    <td contenteditable="true">${assignment.assignment}</td>
+                    <td><input type="date" value="${assignment.dueDate}" onchange="checkDueDates(); saveAssignments()"></td>
+                    <td>
+                        <select onchange="updateStatus(this)">
+                            <option value="Pending" ${assignment.status === "Pending" ? "selected" : ""}>Not Done</option>
+                            <option value="Completed" ${assignment.status === "Completed" ? "selected" : ""}>Completed</option>
+                        </select>
+                    </td>
+                    <td><button onclick="removeAssignment(this)">Remove</button></td>
+                `;
+
+                if (assignment.status === "Completed") row.classList.add("completed");
+            });
+
+            checkDueDates();
+        }
+
+        // ✅ Function to check due dates & apply flashing effect
+        function checkDueDates() {
+            let rows = document.getElementById("homeworkTable").rows;
+            let today = new Date().toISOString().split("T")[0];
+
+            for (let row of rows) {
+                let dueDate = row.cells[2].children[0].value;
+                let status = row.cells[3].children[0].value;
+                let subjectCell = row.cells[0];
+
+                if (dueDate < today && status !== "Completed") {
+                    subjectCell.innerHTML = `❗ ${subjectCell.innerText.replace("❗ ", "")}`;
+                    row.classList.add("overdue");
+                } else {
+                    subjectCell.innerHTML = subjectCell.innerText.replace("❗ ", "");
+                    row.classList.remove("overdue");
+                }
+            }
+        }
+
+        // ✅ Function to update assignment status
+        function updateStatus(selectElement) {
+            let row = selectElement.parentNode.parentNode;
+            let status = selectElement.value;
+
+            if (status === "Completed") {
+                row.classList.add("completed");
+                row.classList.remove("overdue");
+            } else {
+                row.classList.remove("completed");
+            }
+
+            checkDueDates();
+            saveAssignments();
+        }
+
+        // ✅ Function to remove an assignment
+        function removeAssignment(button) {
+            let row = button.parentNode.parentNode;
+            row.parentNode.removeChild(row);
+            saveAssignments();
+        }
+
+        // ✅ Function to handle login
+        function login() {
+            let user = document.getElementById("username").value;
+            let pass = document.getElementById("password").value;
+
+            if (users[user] && users[user] === pass) {
+                currentUser = user;
+                localStorage.setItem("lastUser", user); // 🔥 Save logged-in user
+                document.getElementById("loginScreen").style.display = "none";
+                document.getElementById("trackerScreen").style.display = "block";
+                loadAssignments();
+            } else {
+                document.getElementById("loginError").innerText = "Invalid login credentials.";
+            }
+        }
+
+        // ✅ Function to handle logout
+        function logout() {
+            document.getElementById("loginScreen").style.display = "block";
+            document.getElementById("trackerScreen").style.display = "none";
+        }
+        </script>
+</body>
+</html>
