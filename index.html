@@ -138,7 +138,6 @@
                     status: row.cells[3].children[0].value
                 });
             }
-            localStorage.setItem(`homework_${currentUser}`, JSON.stringify(assignments));
         }
 
         function loadAssignments() {
@@ -259,9 +258,6 @@
 
         }
 
-            // Save to Local Storage
-            localStorage.setItem(`homework_${currentUser}`, JSON.stringify(assignments));
-
             // Save to Firestore with error handling
             try {
                 await setDoc(doc(db, "users", currentUser), { assignments });
@@ -276,13 +272,6 @@
             if (!currentUser) return;
             let table = document.getElementById("homeworkTable");
             table.innerHTML = "";
-
-            // Load from Local Storage first
-            let localAssignments = JSON.parse(localStorage.getItem(`homework_${currentUser}`)) || [];
-            if (localAssignments.length > 0) {
-                console.log("📥 Loaded from Local Storage:", localAssignments);
-                displayAssignments(localAssignments);
-            }
 
             try {
                 const docRef = doc(db, "users", currentUser);
